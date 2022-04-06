@@ -11,13 +11,31 @@ import (
 )
 
 func main() {
-	hostname := flag.String("h", "localhost", "Cassandra Hostname")
+	hostname := flag.String("h", "localhost", "Cassandra hostname")
 	keyspace := flag.String("k", "newts", "Newts Keyspace")
-	pagesize := flag.Int("p", 1000, "page size")
+	port := flag.Int("p", 9042, "Cassandra port")
+	pagesize := flag.Int("n", 1000, "page size")
+	username := flag.String("user", "", "Cassandra username")
+	password := flag.String("pwd", "", "Cassandra password")
+	certpath := flag.String("cacert", "", "Path to Server CA certificate")
 	flag.Parse()
 
-	cluster := gocql.NewCluster(*hostname)
+	cluster := gocql.NewCluster(fmt.Sprintf("%s:%d", *hostname, *port))
 	cluster.Keyspace = *keyspace
+	cluster.Consistency = gocql.LocalQuorum
+
+	if *username != "" && *password != "" {
+		cluster.Authenticator = gocql.PasswordAuthenticator{
+			Username: *username,
+			Password: *password,
+		}
+	}
+
+	if *certpath != "" {
+		cluster.SslOpts = &gocql.SslOptions{
+			CaPath: *certpath,
+		}
+	}
 
 	session, err := cluster.CreateSession()
 	if err != nil {
