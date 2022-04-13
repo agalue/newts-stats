@@ -8,4 +8,4 @@ It analyzes the `resource_metrics` from the `newts` keyspace, and display basic 
 
 It also creates two files, `metrics.txt` and `resources.txt` with the content from Cassandra for further analysis.
 
-Pass `--help` to specify the Cassandra Hostname and the Newts Keyspace.
+Use `--help` to learn about all the tunable parameters and their defaults, like specifying the Cassandra Hostname and the Newts Keyspace.
