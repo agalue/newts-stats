@@ -18,6 +18,7 @@ func main() {
 	username := flag.String("user", "", "Cassandra username")
 	password := flag.String("pwd", "", "Cassandra password")
 	certpath := flag.String("cacert", "", "Path to Server CA certificate")
+	outputdir := flag.String("o", "/tmp", "Output directory")
 	flag.Parse()
 
 	cluster := gocql.NewCluster(fmt.Sprintf("%s:%d", *hostname, *port))
@@ -72,25 +73,33 @@ func main() {
 		pageState = nextPageState
 	}
 
-	if f, err := os.Create("metrics.txt"); err == nil {
+	log.Printf("Number of Active Samples: %v", samples)
+	log.Printf("Number of Unique Metrics: %v", len(metrics))
+	log.Printf("Number of Unique Resources: %v", len(resources))
+
+	metricsFile := *outputdir + "/metrics.txt"
+	if f, err := os.Create(metricsFile); err == nil {
 		for _, k := range getKeys(metrics) {
 			f.WriteString(fmt.Sprintf("%s=%d\n", k, metrics[k]))
 		}
 		f.Sync()
 		f.Close()
+		log.Printf("Metrics details written to %s", metricsFile)
+	} else {
+		log.Fatalf("Cannot write file %s: %v", metricsFile, err)
 	}
 
-	if f, err := os.Create("resources.txt"); err == nil {
+	resourcesFile := *outputdir + "/resources.txt"
+	if f, err := os.Create(resourcesFile); err == nil {
 		for _, k := range getKeys(resources) {
 			f.WriteString(fmt.Sprintf("%s=%d\n", k, resources[k]))
 		}
 		f.Sync()
 		f.Close()
+		log.Printf("Resources details written to %s", resourcesFile)
+	} else {
+		log.Fatalf("Cannot write file %s: %v", resourcesFile, err)
 	}
-
-	log.Printf("Number of Active Samples: %v", samples)
-	log.Printf("Number of Unique Metrics: %v", len(metrics))
-	log.Printf("Number of Unique Resources: %v", len(resources))
 }
 
 func getKeys(data map[string]int) []string {
