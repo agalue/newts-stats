@@ -11,9 +11,12 @@ import (
 )
 
 func main() {
+	log.SetOutput(os.Stdout)
+
 	hostname := flag.String("h", "localhost", "Cassandra hostname")
 	keyspace := flag.String("k", "newts", "Newts Keyspace")
 	port := flag.Int("p", 9042, "Cassandra port")
+	topN := flag.Int("topn", 10, "Number of elements to show on the TopN Cardinality report")
 	pagesize := flag.Int("n", 1000, "page size")
 	username := flag.String("user", "", "Cassandra username")
 	password := flag.String("pwd", "", "Cassandra password")
@@ -49,6 +52,7 @@ func main() {
 	samples := 0
 	resources := make(map[string]int)
 	metrics := make(map[string]int)
+	resourceMaxLength := 0
 	for {
 		iter := session.Query(`select metric_name, resource from resource_metrics`).PageSize(*pagesize).PageState(pageState).Iter()
 		nextPageState := iter.PageState()
@@ -62,6 +66,10 @@ func main() {
 			resources[resource]++
 			metrics[metric]++
 			samples++
+			s := len(resource)
+			if s > resourceMaxLength {
+				resourceMaxLength = s
+			}
 		}
 		err = scanner.Err()
 		if err != nil {
@@ -73,9 +81,11 @@ func main() {
 		pageState = nextPageState
 	}
 
-	log.Printf("Number of Active Samples: %v", samples)
-	log.Printf("Number of Unique Metrics: %v", len(metrics))
-	log.Printf("Number of Unique Resources: %v", len(resources))
+	log.Printf("Number of Active Samples: %d", samples)
+	log.Printf("Number of Unique Metrics: %d", len(metrics))
+	log.Printf("Number of Unique Resources: %d", len(resources))
+	log.Printf("Maximum resource ID length: %d characters", resourceMaxLength)
+	showCardinality(metrics, *topN)
 
 	metricsFile := *outputdir + "/metrics.txt"
 	if f, err := os.Create(metricsFile); err == nil {
@@ -109,4 +119,23 @@ func getKeys(data map[string]int) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+func showCardinality(metrics map[string]int, topN int) {
+	keys := make([]string, 0, len(metrics))
+	for key := range metrics {
+		keys = append(keys, key)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return metrics[keys[i]] > metrics[keys[j]]
+	})
+	log.Printf("High Cardinality Metrics:")
+	max := topN
+	if len(keys) < topN {
+		max = len(keys)
+	}
+	for i := 0; i < max; i++ {
+		key := keys[i]
+		log.Printf("- %s : %d", key, metrics[key])
+	}
 }
