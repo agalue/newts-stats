@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"time"
 
 	"github.com/gocql/gocql"
 )
@@ -21,12 +22,18 @@ func main() {
 	username := flag.String("user", "", "Cassandra username")
 	password := flag.String("pwd", "", "Cassandra password")
 	certpath := flag.String("cacert", "", "Path to Server CA certificate")
+	timeout := flag.Duration("t", 5*time.Second, "Connection timeout")
+	connections := flag.Int("c", 2, "Number of connections")
+
 	outputdir := flag.String("o", "/tmp", "Output directory")
 	flag.Parse()
 
 	cluster := gocql.NewCluster(fmt.Sprintf("%s:%d", *hostname, *port))
 	cluster.Keyspace = *keyspace
 	cluster.Consistency = gocql.LocalQuorum
+	cluster.Timeout = *timeout
+	cluster.ConnectTimeout = *timeout
+	cluster.NumConns = *connections
 
 	if *username != "" && *password != "" {
 		cluster.Authenticator = gocql.PasswordAuthenticator{
